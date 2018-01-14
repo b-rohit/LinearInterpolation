@@ -1,35 +1,46 @@
+import numpy as np
 import random
-import sys
+import  sys
+import warnings
 
-#function to calculate intermediate points on a linear line between two points
-#it takes a polyline points as list of list, rFactor to randomize interval as inputs and
-#output results in a xlsx file
-def interpolate(data, interval, rFactor, row,fh):
+
+def coord_add(data, l, fh, rand, row):
     i = 0
-    start = data[0][0] + interval
+    np.seterr(divide='ignore', invalid='ignore')
     while i < len(data) -1:
+        a = np.array(data[i])
+        b = np.array(data[i+1])
+        r = b - a
+        rn = np.linalg.norm(a - b)
+        #print rn
         try:
-            slope = (data[i+1][1] - data[i][1])/(data[i+1][0] - data[i][0])
+            n = r / rn
+            #print r
+            #print a,b
         except ZeroDivisionError:
             i+= 1
             continue
-            print "hell"
-        while start  < data[i+1][0]:
-            ycord = data[i][1] + slope*(start - data[i][0])
-            strl = "1000;" + str(row) +";;;;;0;" + str(start) + ";" + str(ycord) + ";0;10.000;0;0\n";
+        temp = a + n * l*random.uniform(0, 1)*rand
+        strl = "1000;" + str(row) +";;;;;0;" + str(temp[0]) + ";" + str(temp[1]) + ";0;10.000;0;0\n"
+        fh.write(strl)
+        sign = 0
+        if r[0] > 0:
+            sign = 1
+        else:
+            sign =-1
+        while temp[0]<=b[0]*sign:
+            temp = temp + n * l*random.uniform(0, 1)*rand
+            row+= 1
+            strl = "1000;" + str(row) +";;;;;0;" + str(temp[0]) + ";" + str(temp[1]) + ";0;10.000;0;0\n"
             fh.write(strl)
-            row = row +1
-            if rFactor:
-                start = start + interval*(1 + random.uniform(-0.5, 0.5))
-            else:
-                start = start + interval
-        i+= 1
-    if (row%100) == 0:
-        sys.stdout.write('.')
+        i+=1
+        if (row%100) == 0:
+            sys.stdout.write('.')
     return row
 
+
 def linearInterpolate(fPath, interval, rFactor):
-    print "Started"
+    print "Started ..."
     #file handler for file
     f = open(fPath, "r")
     fh = open("output.net", "w")
@@ -40,8 +51,6 @@ def linearInterpolate(fPath, interval, rFactor):
     for line in f:
         #read between paranthesis and convert to a list of strings
         d = line[line.find("(")+1:line.find(")")].replace(','," ").split()
-        if not d:
-            continue
         i = 0
         data = []
         #loop through the list and convert to list of lists of floats
@@ -49,8 +58,9 @@ def linearInterpolate(fPath, interval, rFactor):
             data.append([float(d[i]), float(d[i+1])])
             i+=2;
         #function call to calculate intermediate points
-        row = interpolate(data, interval, rFactor, row, fh)
-    print "\nCompleted Successfully"
-    f.close()
+        row = coord_add(data, interval, fh, rFactor, row)
+    print "Completed Successfully"
     fh.close()
+    f.close()
+    return row
 
